@@ -14,6 +14,7 @@ import UIKit
 #endif
 
 public typealias Observer = ((_ response: PingResponse) -> Void)
+public typealias AsyncObserver = ((_ response: PingResponse) async -> Void)
 public typealias FinishedCallback = ((_ result: PingResult) -> Void)
 
 /// Represents a ping delegate.
@@ -150,6 +151,8 @@ public class SwiftyPing: NSObject {
     public let configuration: PingConfiguration
     /// This closure gets called with ping responses.
     public var observer: Observer?
+  
+    public var asyncObserver: AsyncObserver?
     /// This closure gets called when pinging stops, either when `targetCount` is reached or pinging is stopped explicitly with `stop()` or `halt()`.
     public var finished: FinishedCallback?
     /// This delegate gets called with ping responses.
@@ -448,6 +451,11 @@ public class SwiftyPing: NSObject {
         responses.append(response)
         if killswitch { return }
         currentQueue.sync {
+            if #available(macOS 10.15, iOS 13.0, *) {
+                Task {
+                    await self.asyncObserver?(response)
+                }
+            }
             self.observer?(response)
             self.delegate?.didReceive(response: response)
         }
